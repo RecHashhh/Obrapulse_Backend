@@ -55,8 +55,22 @@ Nota: en despliegue (Render) se configura DATABASE_URL en la seccion Environment
 ## Instalacion Local
 
 ```bash
+# Crear el entorno virtual
 python -m venv .venv
-.venv\Scripts\activate
+
+# En PowerShell (recomendado):
+# Si obtienes error de ejecución de scripts, habilita para el usuario actual:
+# Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+# Luego activa el entorno:
+. .venv\Scripts\Activate.ps1
+
+# Alternativa (CMD):
+.venv\Scripts\activate.bat
+
+# O, para una activación puntual sin cambiar la política:
+# powershell -ExecutionPolicy Bypass -NoProfile -Command ". .venv\Scripts\Activate.ps1"
+
+# Instalar dependencias
 pip install -r requirements.txt
 ```
 

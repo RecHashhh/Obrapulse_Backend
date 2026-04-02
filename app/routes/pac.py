@@ -28,6 +28,8 @@ def common_filters(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -39,6 +41,8 @@ def common_filters(
         "ciudad": ciudad,
         "tipo_compra": tipo_compra,
         "procedimiento": procedimiento,
+        "t_regimen": t_regimen,
+        "fondo_bid": fondo_bid,
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
         "valor_min": valor_min,
@@ -53,6 +57,8 @@ def listar_pac(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -66,6 +72,8 @@ def listar_pac(
         ciudad=ciudad,
         tipo_compra=tipo_compra,
         procedimiento=procedimiento,
+        t_regimen=t_regimen,
+        fondo_bid=fondo_bid,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
         valor_min=valor_min,
@@ -82,13 +90,15 @@ def kpis(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
     valor_max: float = None,
 ):
     return obtener_kpis(**common_filters(
-        entidad, provincia, ciudad, tipo_compra, procedimiento,
+        entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
         fecha_inicio, fecha_fin, valor_min, valor_max
     ))
 
@@ -102,6 +112,8 @@ def top_provincias(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -111,7 +123,7 @@ def top_provincias(
         limit=limit,
         metrica=metrica,
         **common_filters(
-            entidad, provincia, ciudad, tipo_compra, procedimiento,
+            entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
             fecha_inicio, fecha_fin, valor_min, valor_max
         )
     )
@@ -126,6 +138,8 @@ def top_ciudades(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -135,7 +149,7 @@ def top_ciudades(
         limit=limit,
         metrica=metrica,
         **common_filters(
-            entidad, provincia, ciudad, tipo_compra, procedimiento,
+            entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
             fecha_inicio, fecha_fin, valor_min, valor_max
         )
     )
@@ -150,6 +164,8 @@ def top_entidades(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -159,7 +175,7 @@ def top_entidades(
         limit=limit,
         metrica=metrica,
         **common_filters(
-            entidad, provincia, ciudad, tipo_compra, procedimiento,
+            entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
             fecha_inicio, fecha_fin, valor_min, valor_max
         )
     )
@@ -174,6 +190,8 @@ def top_procedimientos(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -183,7 +201,7 @@ def top_procedimientos(
         limit=limit,
         metrica=metrica,
         **common_filters(
-            entidad, provincia, ciudad, tipo_compra, procedimiento,
+            entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
             fecha_inicio, fecha_fin, valor_min, valor_max
         )
     )
@@ -196,13 +214,15 @@ def distribucion_tipo_compra(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
     valor_max: float = None,
 ):
     return obtener_distribucion_tipo_compra(**common_filters(
-        entidad, provincia, ciudad, tipo_compra, procedimiento,
+        entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
         fecha_inicio, fecha_fin, valor_min, valor_max
     ))
 
@@ -215,6 +235,8 @@ def distribucion_procedimiento(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -223,7 +245,7 @@ def distribucion_procedimiento(
     return obtener_distribucion_procedimiento(
         limit=limit,
         **common_filters(
-            entidad, provincia, ciudad, tipo_compra, procedimiento,
+            entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
             fecha_inicio, fecha_fin, valor_min, valor_max
         )
     )
@@ -237,6 +259,8 @@ def evolucion_fecha(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -245,7 +269,7 @@ def evolucion_fecha(
     return obtener_evolucion_fecha(
         metrica=metrica,
         **common_filters(
-            entidad, provincia, ciudad, tipo_compra, procedimiento,
+            entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
             fecha_inicio, fecha_fin, valor_min, valor_max
         )
     )
@@ -258,13 +282,15 @@ def histograma_montos(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
     valor_max: float = None,
 ):
     return obtener_histograma_montos(**common_filters(
-        entidad, provincia, ciudad, tipo_compra, procedimiento,
+        entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
         fecha_inicio, fecha_fin, valor_min, valor_max
     ))
 
@@ -276,13 +302,15 @@ def catalogos_dinamicos(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
     valor_max: float = None,
 ):
     return obtener_catalogos_dinamicos(**common_filters(
-        entidad, provincia, ciudad, tipo_compra, procedimiento,
+        entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
         fecha_inicio, fecha_fin, valor_min, valor_max
     ))
 
@@ -294,6 +322,8 @@ def dashboard_contextual(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -305,7 +335,7 @@ def dashboard_contextual(
         metrica=metrica,
         view=view,
         **common_filters(
-            entidad, provincia, ciudad, tipo_compra, procedimiento,
+            entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
             fecha_inicio, fecha_fin, valor_min, valor_max
         )
     )
@@ -320,6 +350,8 @@ def top_entidades_por_provincia(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -333,6 +365,8 @@ def top_entidades_por_provincia(
         ciudad=ciudad,
         tipo_compra=tipo_compra,
         procedimiento=procedimiento,
+        t_regimen=t_regimen,
+        fondo_bid=fondo_bid,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
         valor_min=valor_min,
@@ -349,6 +383,8 @@ def entidades_por_provincia(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
@@ -362,6 +398,8 @@ def entidades_por_provincia(
         ciudad=ciudad,
         tipo_compra=tipo_compra,
         procedimiento=procedimiento,
+        t_regimen=t_regimen,
+        fondo_bid=fondo_bid,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
         valor_min=valor_min,
@@ -375,13 +413,15 @@ def export_csv(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
     valor_max: float = None,
 ):
     buffer = exportar_pac_csv(**common_filters(
-        entidad, provincia, ciudad, tipo_compra, procedimiento,
+        entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
         fecha_inicio, fecha_fin, valor_min, valor_max
     ))
 
@@ -401,13 +441,15 @@ def export_excel(
     ciudad: str = None,
     tipo_compra: str = None,
     procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
     fecha_inicio: str = None,
     fecha_fin: str = None,
     valor_min: float = None,
     valor_max: float = None,
 ):
     output = exportar_pac_excel(**common_filters(
-        entidad, provincia, ciudad, tipo_compra, procedimiento,
+        entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
         fecha_inicio, fecha_fin, valor_min, valor_max
     ))
 

@@ -12,6 +12,8 @@ def _build_filters(
     ciudad=None,
     tipo_compra=None,
     procedimiento=None,
+    t_regimen=None,
+    fondo_bid=None,
     fecha_inicio=None,
     fecha_fin=None,
     valor_min=None,
@@ -39,6 +41,14 @@ def _build_filters(
     if procedimiento:
         filtros.append("Procedimiento = :procedimiento")
         params["procedimiento"] = procedimiento
+
+    if t_regimen:
+        filtros.append("T_Regimen = :t_regimen")
+        params["t_regimen"] = t_regimen
+
+    if fondo_bid:
+        filtros.append("Fondo_BID = :fondo_bid")
+        params["fondo_bid"] = fondo_bid
 
     if fecha_inicio:
         filtros.append("Fecha_Carga >= :fecha_inicio")
@@ -87,6 +97,8 @@ def obtener_pac(
     ciudad=None,
     tipo_compra=None,
     procedimiento=None,
+    t_regimen=None,
+    fondo_bid=None,
     fecha_inicio=None,
     fecha_fin=None,
     valor_min=None,
@@ -100,6 +112,8 @@ def obtener_pac(
         ciudad=ciudad,
         tipo_compra=tipo_compra,
         procedimiento=procedimiento,
+        t_regimen=t_regimen,
+        fondo_bid=fondo_bid,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
         valor_min=valor_min,
@@ -225,6 +239,8 @@ def obtener_top_entidades_por_provincia(
         ciudad=filters.get("ciudad"),
         tipo_compra=filters.get("tipo_compra"),
         procedimiento=filters.get("procedimiento"),
+        t_regimen=filters.get("t_regimen"),
+        fondo_bid=filters.get("fondo_bid"),
         fecha_inicio=filters.get("fecha_inicio"),
         fecha_fin=filters.get("fecha_fin"),
         valor_min=filters.get("valor_min"),
@@ -268,6 +284,8 @@ def obtener_entidades_por_provincia(
         ciudad=filters.get("ciudad"),
         tipo_compra=filters.get("tipo_compra"),
         procedimiento=filters.get("procedimiento"),
+        t_regimen=filters.get("t_regimen"),
+        fondo_bid=filters.get("fondo_bid"),
         fecha_inicio=filters.get("fecha_inicio"),
         fecha_fin=filters.get("fecha_fin"),
         valor_min=filters.get("valor_min"),
@@ -434,6 +452,8 @@ def obtener_catalogos_dinamicos(**filters):
         ciudad=ciudad,
         tipo_compra=tipo_compra,
         procedimiento=filters.get("procedimiento"),
+        t_regimen=filters.get("t_regimen"),
+        fondo_bid=filters.get("fondo_bid"),
         fecha_inicio=filters.get("fecha_inicio"),
         fecha_fin=filters.get("fecha_fin"),
         valor_min=filters.get("valor_min"),
@@ -461,6 +481,8 @@ def obtener_catalogos_dinamicos(**filters):
             ciudad=ciudad,
             fecha_inicio=filters.get("fecha_inicio"),
             fecha_fin=filters.get("fecha_fin"),
+            t_regimen=filters.get("t_regimen"),
+            fondo_bid=filters.get("fondo_bid"),
             valor_min=filters.get("valor_min"),
             valor_max=filters.get("valor_max"),
         )
@@ -488,12 +510,30 @@ def obtener_catalogos_dinamicos(**filters):
         """
         procedimientos = conn.execute(text(procedimientos_sql), params).fetchall()
 
+        regimenes_sql = f"""
+            SELECT DISTINCT T_Regimen
+            FROM tb.pac_partidas
+            {_append_condition(where_sql, "T_Regimen IS NOT NULL")}
+            ORDER BY T_Regimen
+        """
+        regimenes = conn.execute(text(regimenes_sql), params).fetchall()
+
+        fondos_sql = f"""
+            SELECT DISTINCT Fondo_BID
+            FROM tb.pac_partidas
+            {_append_condition(where_sql, "Fondo_BID IS NOT NULL")}
+            ORDER BY Fondo_BID
+        """
+        fondos = conn.execute(text(fondos_sql), params).fetchall()
+
     return {
         "provincias": [r[0] for r in provincias],
         "ciudades": [r[0] for r in ciudades],
         "entidades": [r[0] for r in entidades],
         "tipos_compra": [r[0] for r in tipos],
         "procedimientos": [r[0] for r in procedimientos],
+        "regimenes": [r[0] for r in regimenes],
+        "fondos_bid": [r[0] for r in fondos],
     }
 
 
@@ -652,7 +692,8 @@ def exportar_pac_csv(**filters):
             "Extra", "Periodo", "V_Total_Numeric", "Tipo_Tabla", "Entidad", "url",
             "Nombre_Comercial", "Provincia", "Ciudad", "Fecha_Carga"
         ])
-
+    # Remove Tipo_Tabla from export columns if present
+    df = df.drop(columns=["Tipo_Tabla"], errors="ignore")
     buffer = io.StringIO()
     df.to_csv(buffer, index=False, encoding="utf-8-sig")
     buffer.seek(0)
@@ -671,7 +712,8 @@ def exportar_pac_excel(**filters):
             "Extra", "Periodo", "V_Total_Numeric", "Tipo_Tabla", "Entidad", "url",
             "Nombre_Comercial", "Provincia", "Ciudad", "Fecha_Carga"
         ])
-
+    # Remove Tipo_Tabla from export columns if present
+    df = df.drop(columns=["Tipo_Tabla"], errors="ignore")
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="PAC")
