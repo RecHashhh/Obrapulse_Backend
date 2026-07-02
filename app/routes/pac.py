@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
+from fastapi import HTTPException
 from app.services.pac_service import (
     obtener_pac,
     obtener_kpis,
@@ -15,8 +16,13 @@ from app.services.pac_service import (
     obtener_dashboard_contextual,
     obtener_top_entidades_por_provincia,
     obtener_entidades_por_provincia,
+    obtener_comparador_agregado,
+    obtener_comparador_con_listas,
+    obtener_insights_completo,
+    obtener_pac_por_id,
     exportar_pac_csv,
     exportar_pac_excel,
+    obtener_cargas_disponibles,
 )
 
 router = APIRouter()
@@ -406,6 +412,78 @@ def entidades_por_provincia(
         valor_max=valor_max,
     )
 
+@router.get("/comparador")
+def comparador(
+    group_by: str = Query("Provincia"),
+    limit: int = Query(100, ge=1, le=500),
+    # filtros escalares (compatibilidad)
+    entidad: str = None,
+    provincia: str = None,
+    ciudad: str = None,
+    tipo_compra: str = None,
+    procedimiento: str = None,
+    t_regimen: str = None,
+    fondo_bid: str = None,
+    fecha_inicio: str = None,
+    fecha_fin: str = None,
+    valor_min: float = None,
+    valor_max: float = None,
+    # filtros multi-valor (comma-separated)
+    entidad_list: str = None,
+    provincia_list: str = None,
+    ciudad_list: str = None,
+    tipo_compra_list: str = None,
+    procedimiento_list: str = None,
+):
+    """Datos agrupados server-side para el Comparador. Acepta listas CSV para filtros multi-valor."""
+    if any([entidad_list, provincia_list, ciudad_list, tipo_compra_list, procedimiento_list]):
+        return obtener_comparador_con_listas(
+            group_by=group_by,
+            limit=limit,
+            entidad_list=entidad_list,
+            provincia_list=provincia_list,
+            ciudad_list=ciudad_list,
+            tipo_compra_list=tipo_compra_list,
+            procedimiento_list=procedimiento_list,
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin,
+            valor_min=valor_min,
+            valor_max=valor_max,
+        )
+    return obtener_comparador_agregado(
+        group_by=group_by,
+        limit=limit,
+        **common_filters(
+            entidad, provincia, ciudad, tipo_compra, procedimiento, t_regimen, fondo_bid,
+            fecha_inicio, fecha_fin, valor_min, valor_max,
+        ),
+    )
+
+
+@router.get("/insights")
+def insights_completo(
+    umbral: float = Query(500000, ge=0),
+    tipo_compra: str = None,
+    procedimiento: str = None,
+    t_regimen: str = None,
+    fecha_inicio: str = None,
+    fecha_fin: str = None,
+    valor_min: float = None,
+    valor_max: float = None,
+):
+    """Insights estadísticos sobre el dataset completo (no solo las filas visibles)."""
+    return obtener_insights_completo(
+        umbral=umbral,
+        tipo_compra=tipo_compra,
+        procedimiento=procedimiento,
+        t_regimen=t_regimen,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        valor_min=valor_min,
+        valor_max=valor_max,
+    )
+
+
 @router.get("/export/csv")
 def export_csv(
     entidad: str = None,
@@ -460,3 +538,18 @@ def export_excel(
             "Content-Disposition": f"attachment; filename=PAC_Export_{provincia or 'general'}.xlsx"
         }
     )
+
+@router.get("/cargas-disponibles")
+def cargas_disponibles():
+    return obtener_cargas_disponibles()
+
+
+@router.get("/item/{pac_id}")
+def obtener_contrato_por_id(pac_id: int):
+    """Devuelve el registro completo de un contrato por su ID."""
+    record = obtener_pac_por_id(pac_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Contrato no encontrado")
+    if "error" in record:
+        raise HTTPException(status_code=500, detail=record["error"])
+    return record

@@ -6,3 +6,11 @@ python-dotenv
 pydantic-settings
 openpyxl
 pandas
+apscheduler
+selenium
+beautifulsoup4
+webdriver-manager
+lxml
+PyJWT
+cryptography
+requests

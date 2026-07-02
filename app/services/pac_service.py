@@ -639,6 +639,270 @@ def obtener_dashboard_contextual(metrica="monto", view="all", **filters):
 
     return payload
 
+_COMPARADOR_GROUP_MAP = {
+    "Provincia": ("Provincia", "Provincia IS NOT NULL"),
+    "Ciudad": ("Ciudad", "Ciudad IS NOT NULL"),
+    "Entidad": ("Entidad", "Entidad IS NOT NULL"),
+    "T_Compra": ("T_Compra", "T_Compra IS NOT NULL"),
+    "Procedimiento": ("Procedimiento", "Procedimiento IS NOT NULL"),
+    "T_Regimen": ("T_Regimen", "T_Regimen IS NOT NULL"),
+    "Anio": ("CAST(YEAR(Fecha_Carga) AS NVARCHAR(4))", "Fecha_Carga IS NOT NULL"),
+    "Mes": ("CONVERT(VARCHAR(7), Fecha_Carga, 120)", "Fecha_Carga IS NOT NULL"),
+}
+
+
+def obtener_comparador_agregado(group_by="Provincia", limit=100, **filters):
+    """
+    Devuelve datos ya agrupados server-side para el Comparador.
+    Evita descargar miles de registros crudos al navegador.
+    """
+    if group_by not in _COMPARADOR_GROUP_MAP:
+        group_by = "Provincia"
+
+    dim_expr, dim_null_check = _COMPARADOR_GROUP_MAP[group_by]
+    where_sql, params = _build_filters(**filters)
+    full_where = _append_condition(where_sql, dim_null_check)
+
+    # Para Año/Mes ordenar cronológicamente; para el resto, por monto
+    order_clause = "nombre ASC" if group_by in ("Anio", "Mes") else "monto_total DESC"
+
+    params["limit"] = limit
+    sql = f"""
+    SELECT TOP (:limit)
+        {dim_expr} AS nombre,
+        COUNT(*) AS total_registros,
+        SUM(ISNULL(V_Total_Numeric, 0)) AS monto_total,
+        AVG(ISNULL(V_Total_Numeric, 0)) AS promedio_monto,
+        MIN(CASE WHEN V_Total_Numeric > 0 THEN V_Total_Numeric END) AS minimo_monto,
+        MAX(ISNULL(V_Total_Numeric, 0)) AS maximo_monto
+    FROM tb.pac_partidas
+    {full_where}
+    GROUP BY {dim_expr}
+    ORDER BY {order_clause}
+    """
+    return _run_list_query(sql, params)
+
+
+def _build_comparador_list_filters(
+    entidad_list=None,
+    provincia_list=None,
+    ciudad_list=None,
+    tipo_compra_list=None,
+    procedimiento_list=None,
+    fecha_inicio=None,
+    fecha_fin=None,
+    valor_min=None,
+    valor_max=None,
+):
+    """Construye filtros SQL para el comparador soportando listas (comma-separated → IN clause)."""
+    filtros = []
+    params = {}
+
+    def add_in(field_key, csv_value, sql_col):
+        if not csv_value:
+            return
+        items = [x.strip() for x in str(csv_value).split(",") if x.strip()]
+        if not items:
+            return
+        if len(items) == 1:
+            filtros.append(f"{sql_col} = :{field_key}_0")
+            params[f"{field_key}_0"] = items[0]
+        else:
+            placeholders = ", ".join(f":{field_key}_{i}" for i in range(len(items)))
+            filtros.append(f"{sql_col} IN ({placeholders})")
+            for i, item in enumerate(items):
+                params[f"{field_key}_{i}"] = item
+
+    add_in("entidad", entidad_list, "Entidad")
+    add_in("provincia", provincia_list, "Provincia")
+    add_in("ciudad", ciudad_list, "Ciudad")
+    add_in("tipo_compra", tipo_compra_list, "T_Compra")
+    add_in("procedimiento", procedimiento_list, "Procedimiento")
+
+    if fecha_inicio:
+        filtros.append("Fecha_Carga >= :fecha_inicio")
+        params["fecha_inicio"] = fecha_inicio
+    if fecha_fin:
+        filtros.append("Fecha_Carga <= :fecha_fin")
+        params["fecha_fin"] = fecha_fin
+    if valor_min is not None:
+        filtros.append("ISNULL(V_Total_Numeric, 0) >= :valor_min")
+        params["valor_min"] = valor_min
+    if valor_max is not None:
+        filtros.append("ISNULL(V_Total_Numeric, 0) <= :valor_max")
+        params["valor_max"] = valor_max
+
+    where_sql = ("WHERE " + " AND ".join(filtros)) if filtros else ""
+    return where_sql, params
+
+
+def obtener_comparador_con_listas(
+    group_by="Provincia",
+    limit=100,
+    entidad_list=None,
+    provincia_list=None,
+    ciudad_list=None,
+    tipo_compra_list=None,
+    procedimiento_list=None,
+    fecha_inicio=None,
+    fecha_fin=None,
+    valor_min=None,
+    valor_max=None,
+):
+    """Como obtener_comparador_agregado pero acepta listas CSV para filtros multi-valor."""
+    if group_by not in _COMPARADOR_GROUP_MAP:
+        group_by = "Provincia"
+
+    dim_expr, dim_null_check = _COMPARADOR_GROUP_MAP[group_by]
+    where_sql, params = _build_comparador_list_filters(
+        entidad_list=entidad_list,
+        provincia_list=provincia_list,
+        ciudad_list=ciudad_list,
+        tipo_compra_list=tipo_compra_list,
+        procedimiento_list=procedimiento_list,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        valor_min=valor_min,
+        valor_max=valor_max,
+    )
+    full_where = _append_condition(where_sql, dim_null_check)
+    order_clause = "nombre ASC" if group_by in ("Anio", "Mes") else "monto_total DESC"
+    params["limit"] = limit
+
+    sql = f"""
+    SELECT TOP (:limit)
+        {dim_expr} AS nombre,
+        COUNT(*) AS total_registros,
+        SUM(ISNULL(V_Total_Numeric, 0)) AS monto_total,
+        AVG(ISNULL(V_Total_Numeric, 0)) AS promedio_monto,
+        MIN(CASE WHEN V_Total_Numeric > 0 THEN V_Total_Numeric END) AS minimo_monto,
+        MAX(ISNULL(V_Total_Numeric, 0)) AS maximo_monto
+    FROM tb.pac_partidas
+    {full_where}
+    GROUP BY {dim_expr}
+    ORDER BY {order_clause}
+    """
+    return _run_list_query(sql, params)
+
+
+def obtener_insights_completo(
+    umbral=500000,
+    tipo_compra=None,
+    procedimiento=None,
+    t_regimen=None,
+    fecha_inicio=None,
+    fecha_fin=None,
+    valor_min=None,
+    valor_max=None,
+):
+    """
+    Calcula insights estadísticos sobre el dataset completo (outliers IQR, umbral configurable).
+    No se limita a las 20 filas visibles — analiza toda la tabla.
+    """
+    where_sql, params = _build_filters(
+        tipo_compra=tipo_compra,
+        procedimiento=procedimiento,
+        t_regimen=t_regimen,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        valor_min=valor_min,
+        valor_max=valor_max,
+    )
+    positive_where = _append_condition(where_sql, "V_Total_Numeric > 0")
+
+    pct_sql = f"""
+    SELECT DISTINCT
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY V_Total_Numeric) OVER () AS q1,
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY V_Total_Numeric) OVER () AS q3
+    FROM tb.pac_partidas
+    {positive_where}
+    """
+
+    stats_sql = f"""
+    SELECT
+        COUNT(*) AS total_registros,
+        COUNT(CASE WHEN V_Total_Numeric > 0 THEN 1 END) AS total_positivos,
+        AVG(ISNULL(V_Total_Numeric, 0)) AS avg_monto,
+        MAX(V_Total_Numeric) AS max_monto,
+        MIN(CASE WHEN V_Total_Numeric > 0 THEN V_Total_Numeric END) AS min_monto
+    FROM tb.pac_partidas
+    {where_sql}
+    """
+
+    try:
+        with engine.connect() as conn:
+            pct_row = conn.execute(text(pct_sql), params).mappings().first() or {}
+            stats_row = conn.execute(text(stats_sql), params).mappings().first() or {}
+
+        q1 = float(pct_row.get("q1") or 0)
+        q3 = float(pct_row.get("q3") or 0)
+        iqr = q3 - q1
+        outlier_limit = q3 + 1.5 * iqr
+        total_positivos = int(stats_row.get("total_positivos") or 0)
+        total_registros = int(stats_row.get("total_registros") or 0)
+
+        params2 = {**params, "outlier_limit": outlier_limit, "umbral": float(umbral)}
+        count_sql = f"""
+        SELECT
+            SUM(CASE WHEN ISNULL(V_Total_Numeric, 0) > :outlier_limit THEN 1 ELSE 0 END) AS total_outliers,
+            SUM(CASE WHEN ISNULL(V_Total_Numeric, 0) >= :umbral THEN 1 ELSE 0 END) AS total_sobre_umbral
+        FROM tb.pac_partidas
+        {where_sql}
+        """
+        with engine.connect() as conn:
+            count_row = conn.execute(text(count_sql), params2).mappings().first() or {}
+
+        total_outliers = int(count_row.get("total_outliers") or 0)
+        total_sobre_umbral = int(count_row.get("total_sobre_umbral") or 0)
+
+        return {
+            "q1": round(q1, 2),
+            "q3": round(q3, 2),
+            "iqr": round(iqr, 2),
+            "outlier_limit": round(outlier_limit, 2),
+            "total_outliers": total_outliers,
+            "pct_outliers": round(total_outliers / total_positivos * 100, 1) if total_positivos else 0,
+            "avg_monto": round(float(stats_row.get("avg_monto") or 0), 2),
+            "max_monto": round(float(stats_row.get("max_monto") or 0), 2),
+            "min_monto": round(float(stats_row.get("min_monto") or 0), 2),
+            "total_registros": total_registros,
+            "total_positivos": total_positivos,
+            "total_sobre_umbral": total_sobre_umbral,
+            "umbral_usado": float(umbral),
+        }
+    except Exception as exc:
+        return {
+            "error": str(exc),
+            "q1": 0, "q3": 0, "iqr": 0, "outlier_limit": 0,
+            "total_outliers": 0, "pct_outliers": 0,
+            "avg_monto": 0, "max_monto": 0, "min_monto": 0,
+            "total_registros": 0, "total_positivos": 0,
+            "total_sobre_umbral": 0, "umbral_usado": float(umbral),
+        }
+
+
+def obtener_pac_por_id(pac_id: int):
+    sql = """
+    SELECT
+        id, Nro, Partida_Pres, CPC, T_Compra, T_Regimen, Fondo_BID,
+        Tipo_Presupuesto, Tipo_Producto, Cat_Electronico, Procedimiento,
+        Descripcion, Cantidad, Unidad_Medida, Costo_Unitario, V_Total,
+        Periodo, V_Total_Numeric, Entidad, Provincia, Ciudad,
+        Fecha_Carga, url
+    FROM tb.pac_partidas
+    WHERE id = :pac_id
+    """
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(sql), {"pac_id": pac_id}).mappings().first()
+        if not row:
+            return None
+        return {k: (float(v) if hasattr(v, "__float__") and k in ("V_Total_Numeric", "Costo_Unitario", "Cantidad") else str(v) if v is not None else None)
+                for k, v in dict(row).items()}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
 def obtener_pac_exportable(**filters):
     where_sql, params = _build_filters(**filters)
 
@@ -719,3 +983,19 @@ def exportar_pac_excel(**filters):
         df.to_excel(writer, index=False, sheet_name="PAC")
     output.seek(0)
     return output
+
+def obtener_cargas_disponibles() -> list[dict]:
+    """Returns distinct Fecha_Carga values with record counts, newest first."""
+    from sqlalchemy import text as _text
+    sql = _text("""
+        SELECT
+            CONVERT(VARCHAR(10), Fecha_Carga, 120) AS fecha,
+            COUNT(*) AS registros
+        FROM tb.pac_partidas
+        WHERE Fecha_Carga IS NOT NULL
+        GROUP BY Fecha_Carga
+        ORDER BY Fecha_Carga DESC
+    """)
+    with engine.connect() as conn:
+        rows = conn.execute(sql).fetchall()
+    return [{"fecha": r[0], "registros": r[1]} for r in rows]
